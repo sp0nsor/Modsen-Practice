@@ -1,4 +1,5 @@
 using CRUDWebAPI.Models;
+using FluentValidation.AspNetCore;
 using Microsoft.EntityFrameworkCore;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -11,6 +12,10 @@ builder.Services.AddControllers();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddAutoMapper(typeof(Program).Assembly);
+builder.Services.AddFluentValidation(ce =>
+{
+    ce.RegisterValidatorsFromAssembly(typeof(Program).Assembly);
+});
 
 var app = builder.Build();
 
