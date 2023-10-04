@@ -1,4 +1,5 @@
-﻿using CRUDWebAPI.Models;
+﻿using AutoMapper;
+using CRUDWebAPI.Models;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -10,23 +11,28 @@ namespace CRUDWebAPI.Controllers
     public class EventController : ControllerBase
     {
         private EventContext _eventContext;
+        private readonly IMapper _mapper;
+        private EventDto _eventDto;
 
-        public EventController(EventContext eventContext)
+        public EventController(EventContext eventContext, IMapper mapper)
         {
             _eventContext = eventContext;
+            _mapper = mapper;
         }
 
         [HttpGet]
-        public async Task<ActionResult<IEnumerable<Event>>> GetEvents()
+        public async Task<ActionResult<IEnumerable<EventDto>>> GetEvents()
         {
             if (_eventContext.Events == null)
             {
                 return NotFound();
             }
-            return await _eventContext.Events.ToListAsync();
+            var events = await _eventContext.Events.ToListAsync();
+            var eventDtos = _mapper.Map<List<Event>, List<EventDto>>(events);
+            return eventDtos;
         }
         [HttpGet("{id}")]
-        public async Task<ActionResult<Event>> GetEvent(int id)
+        public async Task<ActionResult<EventDto>> GetEvent(int id)
         {
             if (_eventContext.Events == null)
             {
@@ -35,30 +41,29 @@ namespace CRUDWebAPI.Controllers
 
             var _event = await _eventContext.Events.FindAsync(id);
 
+            _eventDto = _mapper.Map<Event, EventDto>(_event);
+
             if (_event == null)
             {
                 return NotFound();
             }
 
-            return _event;
+            return _eventDto;
         }
 
         [HttpPost]
-        public async Task<ActionResult<Event>> AddEvent(Event newEvent)
+        public async Task<ActionResult<EventDto>> AddEvent(EventDto newEvent)
         {
-            _eventContext.Events.Add(newEvent);
+
+            _eventContext.Events.Add(_mapper.Map<EventDto,Event>(newEvent));
             await _eventContext.SaveChangesAsync();
 
-            return CreatedAtAction(nameof(GetEvent), new {id = newEvent.Id}, newEvent);
+            return Ok();
         }
 
         [HttpPut("{id}")]
-        public async Task<IActionResult> Putevent(int id, Event updateEvent)
+        public async Task<IActionResult> Putevent(int id, EventDto updateEvent)
         {
-            if (id != updateEvent.Id)
-            {
-                return BadRequest();
-            }
 
             var existingevent = await _eventContext.Events.FindAsync(id);
             if (existingevent == null)
@@ -66,13 +71,9 @@ namespace CRUDWebAPI.Controllers
                 return NotFound();
             }
 
-            existingevent.Name = updateEvent.Name;
-            existingevent.Description = updateEvent.Description;
-            existingevent.Speaker = updateEvent.Speaker;
-            existingevent.Time = updateEvent.Time;
-            existingevent.Place = updateEvent.Place;
+            _mapper.Map<EventDto, Event>(updateEvent, existingevent);
 
-            try
+            try 
             {
                 await _eventContext.SaveChangesAsync();
             }
