@@ -1,0 +1,11 @@
+﻿namespace CRUDWebAPI.Models
+{
+    public class EventDto
+    {
+        public string? Name { get; set; }
+        public string? Description { get; set; }
+        public string? Speaker { get; set; }
+        public DateTime? Time { get; set; }
+        public string? Place { get; set; }
+    }
+}
