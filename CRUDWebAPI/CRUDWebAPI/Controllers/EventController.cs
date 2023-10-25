@@ -40,9 +40,7 @@ namespace CRUDWebAPI.Controllers
             }
 
             var _event = await _eventContext.Events.FindAsync(id);
-
             _eventDto = _mapper.Map<Event, EventDto>(_event);
-
             if (_event == null)
             {
                 return NotFound();
