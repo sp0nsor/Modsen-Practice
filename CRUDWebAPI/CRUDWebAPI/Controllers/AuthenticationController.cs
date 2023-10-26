@@ -35,14 +35,21 @@ namespace CRUDWebAPI.Controllers
                 SecurityStamp = Guid.NewGuid().ToString(),
                 UserName = registerUser.Username
             };
-            var result = await _userManager.CreateAsync(user, registerUser.Password);
-            if (result.Succeeded)
+
+            if (await _roleManager.RoleExistsAsync(role))
             {
+                var result = await _userManager.CreateAsync(user, registerUser.Password);
+                if (!result.Succeeded)
+                {
+                    return StatusCode(StatusCodes.Status500InternalServerError);
+                }
+                await _userManager.AddToRoleAsync(user, role);
+
                 return StatusCode(StatusCodes.Status201Created);
             }
             else
             {
-                return StatusCode(StatusCodes.Status500InternalServerError);
+                return StatusCode(StatusCodes.Status400BadRequest);
             }
         }
     }
