@@ -1,6 +1,11 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using CRUDWebAPI.Models.Authentication.SignUp;
 using Microsoft.AspNetCore.Identity;
+using CRUDWebAPI.Models.Auth.LogIn;
+using Microsoft.IdentityModel.Tokens;
+using System.IdentityModel.Tokens.Jwt;
+using System.Security.Claims;
+using System.Text;
 
 namespace CRUDWebAPI.Controllers
 {
@@ -21,6 +26,7 @@ namespace CRUDWebAPI.Controllers
         }
 
         [HttpPost]
+        [Route("Registration")]
         public async Task<IActionResult> Register([FromBody] RegisterUser registerUser, string role)
         {
             var userExist = await _userManager.FindByEmailAsync(registerUser.Email);
@@ -51,6 +57,50 @@ namespace CRUDWebAPI.Controllers
             {
                 return StatusCode(StatusCodes.Status400BadRequest);
             }
+        }
+        [HttpPost]
+        [Route("Login")]
+        public async Task<IActionResult> LogIn([FromBody] LoginModel loginModel)
+        {
+            var user = await _userManager.FindByEmailAsync(loginModel.Email);
+            if (user != null && await _userManager.CheckPasswordAsync(user, loginModel.Password))
+            {
+                var authClaims = new List<Claim>
+                {
+                    new Claim(ClaimTypes.Email, user.Email),
+                    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString()),
+                };
+                var userRoles = await _userManager.GetRolesAsync(user);
+                foreach (var role in userRoles)
+                {
+                    authClaims.Add(new Claim(ClaimTypes.Role, role));
+                }
+
+                var jwtToken = GetToken(authClaims);
+
+                return Ok(new
+                {
+                    token = new JwtSecurityTokenHandler().WriteToken(jwtToken),
+                    expiration = jwtToken.ValidTo
+                });
+            }
+
+            return Unauthorized();
+        }
+
+        private JwtSecurityToken GetToken(List<Claim> claims)
+        {
+            var authSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JWT:Secret"]));
+
+            var token = new JwtSecurityToken(
+                issuer: _configuration["JWT:ValidIssuer"],
+                audience: _configuration["JWT:ValidAudience"],
+                expires: DateTime.Now.AddDays(1),
+                claims: claims,
+                signingCredentials: new SigningCredentials(authSigningKey, SecurityAlgorithms.HmacSha256)
+                );
+
+            return token;
         }
     }
 }
